@@ -3,6 +3,6 @@ class BaseFlowException(Exception):
     pass
 
 
-class SetError(BaseFlowException):
-    """Container's value set error"""
+class TransferError(BaseFlowException):
+    """Transfer error."""
     pass

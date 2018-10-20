@@ -22,17 +22,24 @@ if TYPE_CHECKING:
 
 
 class RuleList(RuleBase):
+    """The Rule that contains other rules, and combines them by specific logic"""
     def __init__(self, rules, operator=all):
+        """
+        :param rules: List of rules
+        :param operator: Combine operator
+        """
         # type: (Iterable[RuleBase], Callable[[Iterable[object]], bool]) -> None
         self.operator = operator  # type: Callable[[Iterable[bool]], bool]
         self.rules = rules  # type: Iterable[RuleBase]
 
+        # Map for fast rule searching
         self._input_map = defaultdict(list)  # type: Dict[Value, List[RuleBase]]
 
         for rule in self.rules:
             for _input in rule.inputs:
                 self._input_map[_input].append(rule)
 
+        # Map for fast rule searching
         self._output_map = defaultdict(list)  # type: Dict[Value, List[RuleBase]]
 
         for rule in self.rules:
@@ -97,7 +104,12 @@ class RuleList(RuleBase):
 
 
 class OneToOneRule(RuleBase):
+    """The Rule for the one to one transfer."""
     def __init__(self, input_value, output_value):
+        """
+        :param input_value: Allowed import value
+        :param output_value: Allowed output value
+        """
         # type: (Value, Value) -> None
         self.input_value = input_value  # type: Value
         self.output_value = output_value  # type: Value
@@ -126,7 +138,12 @@ class OneToOneRule(RuleBase):
 
 
 class OneToManyRule(RuleBase):
+    """The Rule for the one to many transfer."""
     def __init__(self, input_value, output_values):
+        """
+        :param input_value: Allowed input value
+        :param output_values: Collection of allowed output values
+        """
         # type: (Value, Collection[Value]) -> None
         self.input_value = input_value  # type: Value
         self.output_values = output_values  # type: Collection[Value]
@@ -155,7 +172,12 @@ class OneToManyRule(RuleBase):
 
 
 class ManyToOneRule(RuleBase):
+    """The Rule for the many to one transfer."""
     def __init__(self, input_values, output_value):
+        """
+        :param input_values: Collection of allowed input values
+        :param output_value: Allowed output value
+        """
         # type: (Collection[Value], Value) -> None
         self.input_values = input_values  # type: Collection[Value]
         self.output_value = output_value  # type: Value
@@ -184,7 +206,12 @@ class ManyToOneRule(RuleBase):
 
 
 class ManyToManyRule(RuleBase):
+    """The Rule for the many to many transfer."""
     def __init__(self, input_values, output_values):
+        """
+        :param input_values: Collection of allowed input values
+        :param output_values: Collection of allowed output values
+        """
         # type: (Collection[Value], Collection[Value]) -> None
         self.input_values = input_values  # type: Collection[Value]
         self.output_values = output_values  # type: Collection[Value]
@@ -201,7 +228,7 @@ class ManyToManyRule(RuleBase):
 
     def is_valid(self, input_value, output_value):
         # type: (Value, Value) -> Tuple[bool, Optional[str]]
-        if input_value in self.input_values:
+        if input_value not in self.input_values:
             return False, '%s not in %s' % (
                 repr(input_value), repr(self.input_values))
 
@@ -213,8 +240,12 @@ class ManyToManyRule(RuleBase):
 
 
 class OneToAllRule(RuleBase):
+    """The Rule for the one to all transfer."""
     def __init__(self, input_value):
-        # type: (Value) -> None
+        """
+        :param input_value: Allowed input value
+        """
+        # type: (Value,) -> None
         self.input_value = input_value  # type: Value
 
     @property
@@ -237,8 +268,12 @@ class OneToAllRule(RuleBase):
 
 
 class AllToOneRule(RuleBase):
+    """The rule for the all to one transfer."""
     def __init__(self, output_value):
-        # type: (Value) -> None
+        """
+        :param output_value: Allowed output value
+        """
+        # type: (Value,) -> None
         self.output_value = output_value  # type: Value
 
     @property
@@ -260,7 +295,64 @@ class AllToOneRule(RuleBase):
         return True, None
 
 
+class ManyToAllRule(RuleBase):
+    """The Rule for the many to all transfer."""
+    def __init__(self, input_values):
+        """
+        :param input_values: Collection of allowed input values
+        """
+        # type: (Collection[Value],) -> None
+        self.input_values = input_values  # type: Collection[Value]
+
+    @property
+    def inputs(self):
+        # type: () -> Set[Value]
+        return set(self.input_values)
+
+    @property
+    def outputs(self):
+        # type: () -> Set[Value]
+        return {self.ALL}
+
+    def is_valid(self, input_value, output_value):
+        # type: (Value, Value) -> Tuple[bool, Optional[str]]
+        if input_value not in self.input_values:
+            return False, '%s not in %s' % (
+                repr(input_value), repr(self.input_values))
+
+        return True, None
+
+
+class AllToManyRule(RuleBase):
+    """The Rule for the all to many transfer."""
+    def __init__(self, output_values):
+        """
+        :param output_values: Collection of allowed output values
+        """
+        # type: (Collection[Value],) -> None
+        self.output_values = output_values  # type: Collection[Value]
+
+    @property
+    def inputs(self):
+        # type: () -> Set[Value]
+        return {self.ALL}
+
+    @property
+    def outputs(self):
+        # type: () -> Set[Value]
+        return set(self.output_values)
+
+    def is_valid(self, input_value, output_value):
+        # type: (Value, Value) -> Tuple[bool, Optional[str]]
+        if output_value not in self.output_values:
+            return False, '%s not in %s' % (
+                repr(output_value), repr(self.output_values))
+
+        return True, None
+
+
 class AllToAllRule(RuleBase):
+    """The Rule for the all to all transfer."""
     @property
     def inputs(self):
         # type: () -> Set[Value]
