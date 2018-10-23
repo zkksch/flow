@@ -353,7 +353,7 @@ class TestFlow(unittest.TestCase):
             def outputs(self):
                 return {week.TUESDAY, week.WEDNESDAY}
 
-            def is_valid(self, input_value, output_value):
+            def is_valid(self, input_value, output_value, context=None):
                 if output_value == week.TUESDAY:
                     return False, ''
                 else:
@@ -389,6 +389,47 @@ class TestFlow(unittest.TestCase):
 
         self._check_rule_cases(rule_all, cases_all)
         self._check_rule_cases(rule_any, cases_any)
+
+    def test_transfer_context(self):
+        week = self.week
+
+        class CustomRule(RuleBase):
+            @property
+            def inputs(self):
+                return {self.ALL}  # pragma: no cover
+
+            @property
+            def outputs(self):
+                return {self.ALL}  # pragma: no cover
+
+            def is_valid(self, input_value, output_value, context=None):
+                if context is not None:
+                    used = context.get('used', False)
+                    if used:
+                        return False, 'used'
+                    else:
+                        context['used'] = True
+                        return True, None
+
+                return True, None  # pragma: no cover
+
+        flow = FlowBase(CustomRule(), week.MONDAY, {})
+
+        flow.value = week.TUESDAY
+
+        self.assertIn('used', flow.context)
+        self.assertTrue(flow.context['used'])
+
+        with self.assertRaises(TransferError):
+            flow.value = week.MONDAY
+
+        flow = FlowBase(CustomRule(), week.MONDAY, {'used': True})
+
+        self.assertIn('used', flow.context)
+        self.assertTrue(flow.context['used'])
+
+        with self.assertRaises(TransferError):
+            flow.value = week.MONDAY
 
 
 if __name__ == '__main__':

@@ -34,6 +34,11 @@ class ValueContainerBase(metaclass=abc.ABCMeta):
 _ALL = type('ALL', (object,), {})()
 
 
+class TransferContext(dict):
+    """Storage for the transfer context data."""
+    pass
+
+
 class RuleBase(metaclass=abc.ABCMeta):
     """Base rule class."""
     ALL = _ALL
@@ -41,39 +46,55 @@ class RuleBase(metaclass=abc.ABCMeta):
     @property  # type: ignore
     @abc.abstractmethod
     def inputs(self):
-        """Inputs for the rule."""
         # type: () -> Set[Value]
+        """Inputs for the rule."""
         raise NotImplementedError
 
     @property  # type: ignore
     @abc.abstractmethod
     def outputs(self):
-        """Outputs for the rule."""
         # type: () -> Set[Value]
+        """Outputs for the rule."""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def is_valid(self, input_value, output_value):
+    def is_valid(self, input_value, output_value, context=None):
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
         """Is transfer between input and output value valid
 
         :param input_value: Input value
         :param output_value: Output value
+        :param context: Transfer context
         :return: (Is valid, Error string)
         """
-        # type: (Value, Value) -> Tuple[bool, Optional[str]]
         raise NotImplementedError
 
 
 class FlowBase(ValueContainerBase):
     """Base values flow class."""
-    def __init__(self, rule, init=None):
+    def __init__(self, rule, init=None, context=None):
+        # type: (RuleBase, Value, dict) -> None
         """
         :param rule: Values transfer rules
         :param init: Initial value
+        :param context: Initial context
         """
-        # type: (RuleBase, Value) -> None
         self._rule = rule  # type: RuleBase
         self._value = init  # type: Value
+        self._context = None  # type: TransferContext
+
+        self.init_context(context or {})
+
+    def init_context(self, context):
+        # type: (dict) -> None
+        """Initialize transfer context."""
+        self._context = TransferContext(context)  # type: TransferContext
+
+    @property
+    def context(self):
+        # type: () -> TransferContext
+        """Transfer context of the flow."""
+        return self._context
 
     @property
     def value(self):
@@ -81,7 +102,7 @@ class FlowBase(ValueContainerBase):
 
     @value.setter
     def value(self, value):
-        is_valid, err = self._rule.is_valid(self._value, value)
+        is_valid, err = self._rule.is_valid(self._value, value, self._context)
         if is_valid:
             self._value = value
         else:
