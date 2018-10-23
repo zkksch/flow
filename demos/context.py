@@ -1,14 +1,14 @@
-# flow
+from enum import Enum
 
-[![Build Status](https://travis-ci.com/zkksch/flow.svg?branch=dev)](https://travis-ci.com/zkksch/flow) 
-[![Coverage Status](https://coveralls.io/repos/github/zkksch/flow/badge.svg?branch=dev)](https://coveralls.io/github/zkksch/flow?branch=dev)
+from flow.bases import FlowBase
+from flow.bases import RuleBase
+from flow.exceptions import TransferError
+from flow.rules import AllToOneRule
+from flow.rules import OneToAllRule
+from flow.rules import OneToOneRule
+from flow.rules import RuleList
 
-Simple values flow implementation
 
-### Usage:
-
-```python
-# Create values enum
 class Week(Enum):
     MONDAY = 0
     TUESDAY = 1
@@ -18,69 +18,9 @@ class Week(Enum):
     SATURDAY = 5
     SUNDAY = 6
 
-# Initialize the main rule of the flow
-rule = RuleList((
-    OneToAllRule(None),
-    AllToOneRule(None),
-    OneToOneRule(Week.MONDAY, Week.TUESDAY),
-    OneToOneRule(Week.TUESDAY, Week.WEDNESDAY),
-    OneToOneRule(Week.WEDNESDAY, Week.THURSDAY),
-    OneToOneRule(Week.THURSDAY, Week.FRIDAY),
-    OneToOneRule(Week.FRIDAY, Week.SATURDAY),
-    OneToOneRule(Week.SATURDAY, Week.SUNDAY),
-    OneToOneRule(Week.SUNDAY, Week.MONDAY),
-))
 
-# Initialize the Flow object
-flow = FlowBase(rule, Week.MONDAY)
-
-# It's Ok, According to OneToOneRule(Week.MONDAY, Week.TUESDAY)
-flow.value = Week.TUESDAY
-
-# There is no such rule in the Flow object, raises `TransferError`
-try:
-    flow.value = Week.THURSDAY
-except TransferError:
-    pass
-else:
-    raise AssertionError
-```
-
-### Create your own rules
-
-```python
-class RandomRule(RuleBase):
-    @property
-    def inputs(self):
-        return {self.ALL}
-
-    @property
-    def outputs(self):
-        return {self.ALL}
-
-    def is_valid(self, input_value, output_value, context=None):
-        if random.randint(0, 100) > 50:
-            return False, 'You unlucky :('
-
-        return True, None
-
-
-flow = FlowBase(RandomRule(), Week.MONDAY)
-
-try:
-    flow.value = Week.TUESDAY
-except TransferError:
-    # Falls in 50% of attempts
-    print('You unlucky :(')
-else:
-    print('You lucky :)')
-```
-
-### `TransferContext` and `RuleList` usage
-
-```python
 class UniqueTransfer(RuleBase):
-    """Stores completed transfers in context, 
+    """Stores completed transfers in context,
     and doesn't allows to complete same transfer twice."""
     @property
     def inputs(self):
@@ -149,5 +89,3 @@ else:
 # But values <-> None transfer is Ok
 flow.value = None
 flow.value = Week.MONDAY
-```
-

@@ -91,7 +91,9 @@ class RuleList(RuleBase):
             )
 
         validation_results = [
-            rule.is_valid(input_value, output_value) for rule in rules]
+            rule.is_valid(input_value, output_value, context)
+            for rule in rules
+        ]
 
         is_valid = self.operator(
             is_valid for is_valid, _ in validation_results)

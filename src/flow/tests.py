@@ -1,7 +1,8 @@
 import unittest
 from enum import Enum
 
-from flow.bases import FlowBase, RuleBase
+from flow.bases import FlowBase
+from flow.bases import RuleBase
 from flow.exceptions import TransferError
 from flow.rules import AllToAllRule
 from flow.rules import AllToOneRule
