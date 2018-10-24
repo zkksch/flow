@@ -98,11 +98,12 @@ class UniqueTransfer(RuleBase):
             key = (input_value, output_value)
 
             if key in transferred_already:
-                return False, 'The transfer has been already accomplished'
+                return False, TransferError(
+                    self, 'The transfer has been already accomplished')
             transferred_already.add(key)
             return True, None
 
-        raise TransferError('Context required')
+        raise TransferError(self, 'Context required')
 
 
 # Creating following rules list:

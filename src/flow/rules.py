@@ -2,6 +2,8 @@ from collections import defaultdict
 from itertools import chain
 
 from flow.bases import RuleBase
+from flow.exceptions import TransferError
+from flow.exceptions import RuleListTransferError
 
 try:
     from typing import TYPE_CHECKING
@@ -31,7 +33,8 @@ class RuleList(RuleBase):
         :param operator: Combine operator
         """
         self.operator = operator  # type: Callable[[Iterable[bool]], bool]
-        self.rules = rules  # type: Iterable[RuleBase]
+        self.rules = []  # type: List[RuleBase]
+        self.rules.extend(rules)
 
         # Map for fast rule searching
         self._input_map = defaultdict(list)  # type: Dict[Value, List[RuleBase]]
@@ -57,26 +60,8 @@ class RuleList(RuleBase):
         # type: () -> Set[Value]
         return set(chain(*(rule.outputs for rule in self.rules)))
 
-    def _format_error(self, rules, validation_results):
-        # type: (Iterable[RuleBase], Iterable[Tuple[bool, Optional[str]]]) -> str
-        main_template = "\nValidation error: (operator: {op}):\n{msg}"
-
-        results = ',\n'.join(
-            '[%s] %s: %s' % (
-                ' ' if not is_valid else 'X',
-                repr(rule),
-                result
-            )
-            for rule, (is_valid, result) in zip(rules, validation_results)
-        )
-
-        return main_template.format(
-            op=repr(self.operator),
-            msg=results
-        )
-
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         input_rules = set(self._input_map[input_value]) | set(
             self._input_map[RuleBase.ALL])
         output_rules = set(self._output_map[output_value]) | set(
@@ -85,23 +70,21 @@ class RuleList(RuleBase):
         rules = input_rules & output_rules
 
         if not rules:
-            return False, 'Rules not found for %s -> %s transfer' % (
-                repr(input_value),
-                repr(output_value)
-            )
+            return False, TransferError(
+                self, 'Rules not found for the %s -> %s transfer')
 
         validation_results = [
-            rule.is_valid(input_value, output_value, context)
+            (rule, rule.is_valid(input_value, output_value, context))
             for rule in rules
         ]
 
         is_valid = self.operator(
-            is_valid for is_valid, _ in validation_results)
+            is_valid for _, (is_valid, _) in validation_results)
 
         if is_valid:
             err = None
         else:
-            err = self._format_error(rules, validation_results)
+            err = RuleListTransferError(self, validation_results)
 
         return is_valid, err
 
@@ -128,14 +111,14 @@ class OneToOneRule(RuleBase):
         return {self.output_value}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
-            return False, '%s != %s' % (
-                repr(self.input_value), repr(input_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.input_value), repr(input_value)))
 
         if self.output_value != output_value:
-            return False, '%s != %s' % (
-                repr(self.output_value), repr(output_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.output_value), repr(output_value)))
 
         return True, None
 
@@ -162,14 +145,14 @@ class OneToManyRule(RuleBase):
         return set(self.output_values)
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
-            return False, '%s != %s' % (
-                repr(self.input_value), repr(input_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.input_value), repr(input_value)))
 
         if output_value not in self.output_values:
-            return False, '%s not in %s' % (
-                repr(output_value), repr(self.output_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(output_value), repr(self.output_values)))
 
         return True, None
 
@@ -196,14 +179,14 @@ class ManyToOneRule(RuleBase):
         return {self.output_value}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if self.output_value != output_value:
-            return False, '%s != %s' % (
-                repr(self.output_value), repr(output_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.output_value), repr(output_value)))
 
         if input_value not in self.input_values:
-            return False, '%s not in %s' % (
-                repr(input_value), repr(self.input_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(input_value), repr(self.input_values)))
 
         return True, None
 
@@ -230,14 +213,14 @@ class ManyToManyRule(RuleBase):
         return set(self.output_values)
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if input_value not in self.input_values:
-            return False, '%s not in %s' % (
-                repr(input_value), repr(self.input_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(input_value), repr(self.input_values)))
 
         if output_value not in self.output_values:
-            return False, '%s not in %s' % (
-                repr(output_value), repr(self.output_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(output_value), repr(self.output_values)))
 
         return True, None
 
@@ -262,10 +245,10 @@ class OneToAllRule(RuleBase):
         return {self.ALL}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
-            return False, '%s != %s' % (
-                repr(self.input_value), repr(input_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.input_value), repr(input_value)))
 
         return True, None
 
@@ -290,10 +273,10 @@ class AllToOneRule(RuleBase):
         return {self.output_value}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if self.output_value != output_value:
-            return False, '%s != %s' % (
-                repr(self.output_value), repr(output_value))
+            return False, TransferError(self, '%s != %s' % (
+                repr(self.output_value), repr(output_value)))
 
         return True, None
 
@@ -318,10 +301,10 @@ class ManyToAllRule(RuleBase):
         return {self.ALL}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if input_value not in self.input_values:
-            return False, '%s not in %s' % (
-                repr(input_value), repr(self.input_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(input_value), repr(self.input_values)))
 
         return True, None
 
@@ -346,10 +329,10 @@ class AllToManyRule(RuleBase):
         return set(self.output_values)
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         if output_value not in self.output_values:
-            return False, '%s not in %s' % (
-                repr(output_value), repr(self.output_values))
+            return False, TransferError(self, '%s not in %s' % (
+                repr(output_value), repr(self.output_values)))
 
         return True, None
 
@@ -367,5 +350,5 @@ class AllToAllRule(RuleBase):
         return {self.ALL}
 
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         return True, None

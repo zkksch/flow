@@ -59,7 +59,7 @@ class RuleBase(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[str]]
+        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
         """Is transfer between input and output value valid
 
         :param input_value: Input value
@@ -106,4 +106,4 @@ class FlowBase(ValueContainerBase):
         if is_valid:
             self._value = value
         else:
-            raise TransferError(err)
+            raise err

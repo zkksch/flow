@@ -3,6 +3,7 @@ from enum import Enum
 
 from flow.bases import FlowBase
 from flow.bases import RuleBase
+from flow.exceptions import RuleListTransferError
 from flow.exceptions import TransferError
 from flow.rules import AllToAllRule
 from flow.rules import AllToOneRule
@@ -407,7 +408,7 @@ class TestFlow(unittest.TestCase):
                 if context is not None:
                     used = context.get('used', False)
                     if used:
-                        return False, 'used'
+                        return False, TransferError(self, 'used')
                     else:
                         context['used'] = True
                         return True, None
@@ -431,6 +432,56 @@ class TestFlow(unittest.TestCase):
 
         with self.assertRaises(TransferError):
             flow.value = week.MONDAY
+
+    def test_rule_list_transfer_error_message(self):
+        rule0 = AllToAllRule()
+        rule1 = AllToAllRule()
+
+        rule2 = AllToAllRule()
+        rule3 = AllToAllRule()
+
+        rule23 = RuleList((
+            rule2,
+            rule3
+        ))
+
+        rule = RuleList((
+            rule0,
+            rule1,
+            rule23
+        ))
+
+        data23 = [
+            (rule2, (True, None)),
+            (rule3, (False, TransferError(rule3, 'Error 3'))),
+        ]
+
+        data = [
+            (rule0, (True, None)),
+            (rule1, (False, TransferError(rule1, 'Error 1'))),
+            (rule23, (False, RuleListTransferError(rule23, data23))),
+        ]
+
+        text = RuleListTransferError.get_message(rule, data)
+        expected_text = """Transfer error in the RuleList (operator: <built-in function all>):
+  [✓] {rule0}: -
+  [✕] {rule1}: Error 1
+  [✕] {rule23}:   Transfer error in the RuleList (operator: <built-in function all>):
+    [✓] {rule2}: -
+    [✕] {rule3}: Error 3""".format(
+            rule0=repr(rule0),
+            rule1=repr(rule1),
+            rule2=repr(rule2),
+            rule3=repr(rule3),
+            rule23=repr(rule23),
+        )
+
+        try:
+            self.assertEqual(text, expected_text)
+        except AssertionError:  # pragma: no cover
+            # Not strict test
+            import warnings  # pragma: no cover
+            warnings.warn('Check The RuleList Transfer Error format')  # pragma: no cover
 
 
 if __name__ == '__main__':
