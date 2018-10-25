@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class RuleList(RuleBase):
-    """The Rule that contains other rules, and combines them by specific logic"""
+    """Rule that contains other rules, and combines them by the operator."""
     def __init__(self, rules, operator=all):
         # type: (Iterable[RuleBase], Callable[[Iterable[object]], bool]) -> None
         """
@@ -60,8 +60,8 @@ class RuleList(RuleBase):
         # type: () -> Set[Value]
         return set(chain(*(rule.outputs for rule in self.rules)))
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         input_rules = set(self._input_map[input_value]) | set(
             self._input_map[RuleBase.ALL])
         output_rules = set(self._output_map[output_value]) | set(
@@ -90,7 +90,7 @@ class RuleList(RuleBase):
 
 
 class OneToOneRule(RuleBase):
-    """The Rule for the one to one transfer."""
+    """Rule for the one to one transfer."""
     def __init__(self, input_value, output_value):
         # type: (Value, Value) -> None
         """
@@ -110,8 +110,8 @@ class OneToOneRule(RuleBase):
         # type: () -> Set[Value]
         return {self.output_value}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
             return False, TransferError(self, '%s != %s' % (
                 repr(self.input_value), repr(input_value)))
@@ -124,7 +124,7 @@ class OneToOneRule(RuleBase):
 
 
 class OneToManyRule(RuleBase):
-    """The Rule for the one to many transfer."""
+    """Rule for the one to many transfer."""
     def __init__(self, input_value, output_values):
         # type: (Value, Collection[Value]) -> None
         """
@@ -144,8 +144,8 @@ class OneToManyRule(RuleBase):
         # type: () -> Set[Value]
         return set(self.output_values)
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
             return False, TransferError(self, '%s != %s' % (
                 repr(self.input_value), repr(input_value)))
@@ -158,7 +158,7 @@ class OneToManyRule(RuleBase):
 
 
 class ManyToOneRule(RuleBase):
-    """The Rule for the many to one transfer."""
+    """Rule for the many to one transfer."""
     def __init__(self, input_values, output_value):
         # type: (Collection[Value], Value) -> None
         """
@@ -178,8 +178,8 @@ class ManyToOneRule(RuleBase):
         # type: () -> Set[Value]
         return {self.output_value}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if self.output_value != output_value:
             return False, TransferError(self, '%s != %s' % (
                 repr(self.output_value), repr(output_value)))
@@ -192,7 +192,7 @@ class ManyToOneRule(RuleBase):
 
 
 class ManyToManyRule(RuleBase):
-    """The Rule for the many to many transfer."""
+    """Rule for the many to many transfer."""
     def __init__(self, input_values, output_values):
         # type: (Collection[Value], Collection[Value]) -> None
         """
@@ -212,8 +212,8 @@ class ManyToManyRule(RuleBase):
         # type: () -> Set[Value]
         return set(self.output_values)
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if input_value not in self.input_values:
             return False, TransferError(self, '%s not in %s' % (
                 repr(input_value), repr(self.input_values)))
@@ -226,7 +226,7 @@ class ManyToManyRule(RuleBase):
 
 
 class OneToAllRule(RuleBase):
-    """The Rule for the one to all transfer."""
+    """Rule for the one to all transfer."""
     def __init__(self, input_value):
         # type: (Value) -> None
         """
@@ -244,8 +244,8 @@ class OneToAllRule(RuleBase):
         # type: () -> Set[Value]
         return {self.ALL}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if self.input_value != input_value:
             return False, TransferError(self, '%s != %s' % (
                 repr(self.input_value), repr(input_value)))
@@ -254,7 +254,7 @@ class OneToAllRule(RuleBase):
 
 
 class AllToOneRule(RuleBase):
-    """The rule for the all to one transfer."""
+    """Rule for the all to one transfer."""
     def __init__(self, output_value):
         # type: (Value) -> None
         """
@@ -272,8 +272,8 @@ class AllToOneRule(RuleBase):
         # type: () -> Set[Value]
         return {self.output_value}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if self.output_value != output_value:
             return False, TransferError(self, '%s != %s' % (
                 repr(self.output_value), repr(output_value)))
@@ -282,7 +282,7 @@ class AllToOneRule(RuleBase):
 
 
 class ManyToAllRule(RuleBase):
-    """The Rule for the many to all transfer."""
+    """Rule for the many to all transfer."""
     def __init__(self, input_values):
         # type: (Collection[Value]) -> None
         """
@@ -300,8 +300,8 @@ class ManyToAllRule(RuleBase):
         # type: () -> Set[Value]
         return {self.ALL}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if input_value not in self.input_values:
             return False, TransferError(self, '%s not in %s' % (
                 repr(input_value), repr(self.input_values)))
@@ -310,7 +310,7 @@ class ManyToAllRule(RuleBase):
 
 
 class AllToManyRule(RuleBase):
-    """The Rule for the all to many transfer."""
+    """Rule for the all to many transfer."""
     def __init__(self, output_values):
         # type: (Collection[Value]) -> None
         """
@@ -328,8 +328,8 @@ class AllToManyRule(RuleBase):
         # type: () -> Set[Value]
         return set(self.output_values)
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         if output_value not in self.output_values:
             return False, TransferError(self, '%s not in %s' % (
                 repr(output_value), repr(self.output_values)))
@@ -338,7 +338,7 @@ class AllToManyRule(RuleBase):
 
 
 class AllToAllRule(RuleBase):
-    """The Rule for the all to all transfer."""
+    """Rule for the all to all transfer."""
     @property
     def inputs(self):
         # type: () -> Set[Value]
@@ -349,6 +349,6 @@ class AllToAllRule(RuleBase):
         # type: () -> Set[Value]
         return {self.ALL}
 
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
         return True, None

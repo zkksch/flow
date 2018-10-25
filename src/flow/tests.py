@@ -1,10 +1,12 @@
 import unittest
 from enum import Enum
 
-from flow.bases import FlowBase
 from flow.bases import RuleBase
+from flow.bases import TransferContext
 from flow.exceptions import RuleListTransferError
 from flow.exceptions import TransferError
+from flow.flow import EnumFlow
+from flow.flow import Flow
 from flow.rules import AllToAllRule
 from flow.rules import AllToOneRule
 from flow.rules import AllToManyRule
@@ -43,7 +45,7 @@ class TestFlow(unittest.TestCase):
             OneToOneRule(self.week.SUNDAY, self.week.MONDAY),
         ))
 
-        f = FlowBase(r)
+        f = Flow(r)
 
         transfers_order = [
             self.week.MONDAY,
@@ -59,11 +61,11 @@ class TestFlow(unittest.TestCase):
         prev = None
 
         for next_value in transfers_order:
-            current = f.value
+            current = f.state
             self.assertEqual(current, prev)
-            f.value = next_value
-            self.assertEqual(f.value, next_value)
-            prev = f.value
+            f.state = next_value
+            self.assertEqual(f.state, next_value)
+            prev = f.state
 
         error_cases = [
             (self.week.MONDAY, self.week.WEDNESDAY),
@@ -75,17 +77,19 @@ class TestFlow(unittest.TestCase):
         ]
 
         for init_value, transfer_value in error_cases:
-            f = FlowBase(r, init=init_value)
+            f = Flow(r, init=init_value)
             with self.assertRaises(TransferError):
-                f.value = transfer_value
+                f.state = transfer_value
 
     def _check_rule_cases(self, rule, cases):
         for input_value, output_value, result in cases:
-            is_valid, error = rule.is_valid(input_value, output_value)
+            is_valid, error = rule.is_valid(
+                input_value, output_value, TransferContext())
             self.assertEqual(is_valid, result)
 
             rules_list = RuleList((rule,))
-            is_valid, error = rules_list.is_valid(input_value, output_value)
+            is_valid, error = rules_list.is_valid(
+                input_value, output_value, TransferContext())
             self.assertEqual(is_valid, result)
 
     def test_one_to_one_rule(self):
@@ -404,34 +408,31 @@ class TestFlow(unittest.TestCase):
             def outputs(self):
                 return {self.ALL}  # pragma: no cover
 
-            def is_valid(self, input_value, output_value, context=None):
-                if context is not None:
-                    used = context.get('used', False)
-                    if used:
-                        return False, TransferError(self, 'used')
-                    else:
-                        context['used'] = True
-                        return True, None
+            def is_valid(self, input_value, output_value, context):
+                used = context.get('used', False)
+                if used:
+                    return False, TransferError(self, 'used')
+                else:
+                    context['used'] = True
+                    return True, None
 
-                return True, None  # pragma: no cover
+        flow = Flow(CustomRule(), week.MONDAY, {})
 
-        flow = FlowBase(CustomRule(), week.MONDAY, {})
-
-        flow.value = week.TUESDAY
+        flow.state = week.TUESDAY
 
         self.assertIn('used', flow.context)
         self.assertTrue(flow.context['used'])
 
         with self.assertRaises(TransferError):
-            flow.value = week.MONDAY
+            flow.state = week.MONDAY
 
-        flow = FlowBase(CustomRule(), week.MONDAY, {'used': True})
+        flow = Flow(CustomRule(), week.MONDAY, {'used': True})
 
         self.assertIn('used', flow.context)
         self.assertTrue(flow.context['used'])
 
         with self.assertRaises(TransferError):
-            flow.value = week.MONDAY
+            flow.state = week.MONDAY
 
     def test_rule_list_transfer_error_message(self):
         rule0 = AllToAllRule()
@@ -482,6 +483,30 @@ class TestFlow(unittest.TestCase):
             # Not strict test
             import warnings  # pragma: no cover
             warnings.warn('Check The RuleList Transfer Error format')  # pragma: no cover
+
+    def test_enum_flow(self):
+        rule = AllToAllRule()
+
+        with self.assertRaises(ValueError):
+            EnumFlow(rule, self.week, null=False)
+
+        flow_none = EnumFlow(rule, self.week, null=True)
+        flow_not_none = EnumFlow(
+            rule, self.week, init=self.week.MONDAY, null=False)
+
+        flow_none.state = self.week.MONDAY
+        flow_none.state = None
+
+        with self.assertRaises(ValueError):
+            flow_none.state = 0
+
+        flow_not_none.state = self.week.TUESDAY
+
+        with self.assertRaises(ValueError):
+            flow_not_none.state = None
+
+        with self.assertRaises(ValueError):
+            flow_not_none.state = 0
 
 
 if __name__ == '__main__':

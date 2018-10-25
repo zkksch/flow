@@ -1,8 +1,8 @@
 from enum import Enum
 
-from flow.bases import FlowBase
 from flow.bases import RuleBase
 from flow.exceptions import TransferError
+from flow.flow import Flow
 from flow.rules import AllToOneRule
 from flow.rules import OneToAllRule
 from flow.rules import OneToOneRule
@@ -66,21 +66,21 @@ rule = RuleList((
 # operator shows how to combine result of rules from the list,
 # if more than one rule used, default - all
 
-flow = FlowBase(rule, init=None)
+flow = Flow(rule, init=None)
 
 # It's all Ok
-flow.value = Week.MONDAY
-flow.value = Week.TUESDAY
-flow.value = Week.WEDNESDAY
-flow.value = Week.THURSDAY
-flow.value = Week.FRIDAY
-flow.value = Week.SATURDAY
-flow.value = Week.SUNDAY
-flow.value = Week.MONDAY
+flow.state = Week.MONDAY
+flow.state = Week.TUESDAY
+flow.state = Week.WEDNESDAY
+flow.state = Week.THURSDAY
+flow.state = Week.FRIDAY
+flow.state = Week.SATURDAY
+flow.state = Week.SUNDAY
+flow.state = Week.MONDAY
 
 try:
     # Trying to complete transfer between same values second time
-    flow.value = Week.TUESDAY
+    flow.state = Week.TUESDAY
 except TransferError:
     pass
 else:
@@ -88,5 +88,5 @@ else:
     raise AssertionError
 
 # But values <-> None transfer is Ok
-flow.value = None
-flow.value = Week.MONDAY
+flow.state = None
+flow.state = Week.MONDAY

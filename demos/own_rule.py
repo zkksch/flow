@@ -1,9 +1,9 @@
 import random
 from enum import Enum
 
-from flow.bases import FlowBase
 from flow.bases import RuleBase
 from flow.exceptions import TransferError
+from flow.flow import Flow
 
 
 class Week(Enum):
@@ -32,10 +32,10 @@ class RandomRule(RuleBase):
         return True, None
 
 
-flow = FlowBase(RandomRule(), Week.MONDAY)
+flow = Flow(RandomRule(), Week.MONDAY)
 
 try:
-    flow.value = Week.TUESDAY
+    flow.state = Week.TUESDAY
 except TransferError:
     # Falls in 50% of attempts
     print('You unlucky :(')

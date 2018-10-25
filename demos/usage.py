@@ -1,7 +1,7 @@
 from enum import Enum
 
-from flow.bases import FlowBase
 from flow.exceptions import TransferError
+from flow.flow import EnumFlow
 from flow.rules import AllToOneRule
 from flow.rules import OneToAllRule
 from flow.rules import OneToOneRule
@@ -33,14 +33,14 @@ rule = RuleList((
 ))
 
 # Initialize the Flow object
-flow = FlowBase(rule, Week.MONDAY)
+flow = EnumFlow(rule=rule, enum=Week, init=Week.MONDAY)
 
 # It's Ok, According to OneToOneRule(Week.MONDAY, Week.TUESDAY)
-flow.value = Week.TUESDAY
+flow.state = Week.TUESDAY
 
 # There is no such rule in the Flow object, raises `TransferError`
 try:
-    flow.value = Week.THURSDAY
+    flow.state = Week.THURSDAY
 except TransferError:
     pass
 else:

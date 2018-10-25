@@ -16,17 +16,17 @@ if TYPE_CHECKING:
     Value = Optional[Hashable]
 
 
-class ValueContainerBase(metaclass=abc.ABCMeta):
-    """Contains a single value and allows to change it."""
+class StateContainerBase(metaclass=abc.ABCMeta):
+    """Contains a single value (state) and allows to change the state."""
     @property  # type: ignore
     @abc.abstractmethod
-    def value(self):
+    def state(self):
         # type: () -> Any
         raise NotImplementedError
 
-    @value.setter  # type: ignore
+    @state.setter  # type: ignore
     @abc.abstractmethod
-    def value(self, value):
+    def state(self, value):
         # type: (Any) -> None
         raise NotImplementedError
 
@@ -58,9 +58,9 @@ class RuleBase(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def is_valid(self, input_value, output_value, context=None):
-        # type: (Value, Value, Optional[TransferContext]) -> Tuple[bool, Optional[TransferError]]
-        """Is transfer between input and output value valid
+    def is_valid(self, input_value, output_value, context):
+        # type: (Value, Value, TransferContext) -> Tuple[bool, Optional[TransferError]]
+        """Is the transfer between input and output values valid
 
         :param input_value: Input value
         :param output_value: Output value
@@ -70,17 +70,17 @@ class RuleBase(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
-class FlowBase(ValueContainerBase):
+class FlowBase(StateContainerBase):
     """Base values flow class."""
     def __init__(self, rule, init=None, context=None):
         # type: (RuleBase, Value, dict) -> None
         """
         :param rule: Values transfer rules
-        :param init: Initial value
+        :param init: Initial state
         :param context: Initial context
         """
         self._rule = rule  # type: RuleBase
-        self._value = init  # type: Value
+        self._state = init  # type: Value
         self._context = None  # type: TransferContext
 
         self.init_context(context or {})
@@ -97,13 +97,21 @@ class FlowBase(ValueContainerBase):
         return self._context
 
     @property
-    def value(self):
-        return self._value
+    def state(self):
+        return self._state
 
-    @value.setter
-    def value(self, value):
-        is_valid, err = self._rule.is_valid(self._value, value, self._context)
+    @state.setter
+    def state(self, state):
+        self.set_state(state)
+
+    def set_state(self, state):
+        # type: (Value) -> None
+        """Set flow state
+
+        :param state: Value of the state
+        """
+        is_valid, err = self._rule.is_valid(self._state, state, self._context)
         if is_valid:
-            self._value = value
+            self._state = state
         else:
             raise err

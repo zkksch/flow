@@ -31,7 +31,7 @@ class TransferError(BaseFlowException):
 
 
 class RuleListTransferError(TransferError):
-    """Transfer error raised from RuleList."""
+    """Transfer error raised from the rules list."""
 
     INDENT = '  '  # type: str
     PASSED_MARK = '\u2713'  # type: str
@@ -52,7 +52,7 @@ class RuleListTransferError(TransferError):
     @classmethod
     def get_message(cls, rule, validation_data, level=0):
         # type: (RuleList, List[Tuple[RuleBase, Tuple[bool, Optional[TransferError]]]], int) -> str
-        """Returns formatted error message
+        """Returns the formatted error message
 
         :param rule: Failed rule
         :param validation_data: Inner rules validation result
